@@ -1,7 +1,7 @@
 # train a miniature character-level shakespeare model
 # good for debugging and playing on macbooks and such
 
-out_dir = 'out-don-char'
+out_dir = 'out-sent-char'
 eval_interval = 250  # keep frequent because we'll overfit
 eval_iters = 200
 log_interval = 50  # don't print too often
@@ -9,11 +9,11 @@ log_interval = 50  # don't print too often
 # we expect to overfit on this small dataset, so only save when val improves
 always_save_checkpoint = False
 
-wandb_log = False  # override via command line if you like
-wandb_project = 'don-char'
-wandb_run_name = 'mini-gpt'
+wandb_log = True  # override via command line if you like
+wandb_project = 'customer_sentiment'
+wandb_run_name = 'nano-gpt'
 
-dataset = 'don_char'
+dataset = 'customer_sentiment'
 gradient_accumulation_steps = 1
 batch_size = 64
 block_size = 256  # context of up to 256 previous characters
@@ -31,6 +31,9 @@ min_lr = 1e-4  # learning_rate / 10 usually
 beta2 = 0.99  # make a bit bigger because number of tokens per iter is small
 
 warmup_iters = 100  # not super necessary potentially
+
+#adding this to distinguish
+token_type = "char"
 
 # on macbook also add
 # device = 'cpu'  # run on cpu only

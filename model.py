@@ -115,6 +115,12 @@ class GPTConfig:
     dropout: float = 0.0
     bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster
 
+@dataclass
+class SentimentGPTConfig:
+    num_classes: int = 3  # Default: negative (0), neutral (1), positive (2)
+    gpt_config: Optional[Any] = None  # Will hold the original GPT config
+    dropout: float = 0.1  # Dropout for the classification head
+
 class GPT(nn.Module):
 
     def __init__(self, config):

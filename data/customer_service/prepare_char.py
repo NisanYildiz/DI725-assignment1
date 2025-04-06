@@ -10,53 +10,115 @@ import os
 import pickle
 import requests
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
-input_file_path = os.path.join(os.path.dirname(__file__), 'train_conv.txt')
-with open(input_file_path, 'r') as f:
-    data = f.read()
-print(f"length of dataset in characters: {len(data):,}")
+# Parameters
+RANDOM_SEED = 42
+TRAIN_SPLIT = 0.8  # 80% training, 20% validation
+
+### Since we are now interested in sentiment analysis, we need seperate
+### conversations and labeles saved
+
+
+input_file_path = os.path.join(os.path.dirname(__file__), 'train.csv')
+df = pd.read_csv(input_file_path)
+
+# Print basic dataset info
+print(f"Dataset shape: {df.shape}")
+print(f"Number of conversations: {len(df)}")
 
 # get all the unique characters that occur in this text
-chars = sorted(list(set(data)))
-vocab_size = len(chars)
-print("all the unique characters:", ''.join(chars))
-print(f"vocab size: {vocab_size:,}")
+
+all_text = ' '.join(df['conversation'].astype(str).tolist())
+print(f"\nTotal text length: {len(all_text):,} characters")
+
+# Create character vocabulary for text
+chars = sorted(list(set(all_text)))
+text_vocab_size = len(chars)
+print(f"Text vocabulary size: {text_vocab_size} unique characters")
+print(f"Character set: {chars}")
 
 # create a mapping from characters to integers
 stoi = { ch:i for i,ch in enumerate(chars) }
 itos = { i:ch for i,ch in enumerate(chars) }
-def encode(s):
+def encode_text(s):
     return [stoi[c] for c in s] # encoder: take a string, output a list of integers
-def decode(l):
+def decode_text(l):
     return ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
 
-# create the train and test splits
 
-test_file_path = os.path.join(os.path.dirname(__file__), 'test_conv.txt')
-with open(test_file_path, 'r') as f:
-    val_data = f.read()
+# Create mappings for sentiment labels
+# Convert labels to strings just in case they're numeric
+sentiment_labels = sorted(list(set(df['customer_sentiment'].astype(str))))
+label_vocab_size = len(sentiment_labels)
+print(f"\nNumber of unique sentiment labels: {label_vocab_size}")
+print(f"Labels: {sentiment_labels}")
 
-train_data = data
+label_stoi = {label:i for i,label in enumerate(sentiment_labels)}
+label_itos = {i:label for i,label in enumerate(sentiment_labels)}
 
-# encode both to integers
-train_ids = encode(train_data)
-val_ids = encode(val_data)
-print(f"train has {len(train_ids):,} tokens")
-print(f"val has {len(val_ids):,} tokens")
+# Print label to index mapping
+print("\nLabel to index mapping:")
+for label, idx in label_stoi.items():
+    print(f"  {label} -> {idx}")
 
-# export to bin files
-train_ids = np.array(train_ids, dtype=np.uint16)
-val_ids = np.array(val_ids, dtype=np.uint16)
-train_ids.tofile(os.path.join(os.path.dirname(__file__), 'train_char.bin'))
-val_ids.tofile(os.path.join(os.path.dirname(__file__), 'val_char.bin'))
+def encode_label(s):
+    return label_stoi[s]
+def decode_label(s):
+    return label_itos[s]
 
-# save the meta information as well, to help us encode/decode later
-meta = {
-    'vocab_size': vocab_size,
-    'itos': itos,
-    'stoi': stoi,
+# Split into train and validation sets
+train_df, val_df = train_test_split(df, train_size=TRAIN_SPLIT, random_state=RANDOM_SEED, stratify=df['customer_sentiment'])
+print(f"\nTraining set size: {len(train_df)}")
+print(f"Validation set size: {len(val_df)}")
+
+# Process and encode training and test data
+train_texts = train_df['conversation'].astype(str).tolist()
+train_labels = train_df['customer_sentiment'].astype(str).tolist()
+
+val_texts = val_df['conversation'].astype(str).tolist()
+val_labels = val_df['customer_sentiment'].astype(str).tolist()
+
+# Encode all texts and labels
+train_text_ids = [encode_text(text) for text in train_texts]
+val_text_ids = [encode_text(text) for text in val_texts]
+train_label_ids = [encode_label(label) for label in train_labels]
+val_label_ids = [encode_label(label) for label in val_labels]
+
+# export 
+
+train_data = {
+    'raw_texts': train_texts,
+    'text_ids': train_text_ids,
+    'label_ids': np.array(train_label_ids, dtype=np.int32)
 }
-with open(os.path.join(os.path.dirname(__file__), 'meta_char.pkl'), 'wb') as f:
+
+val_data = {
+    'raw_texts': val_texts,
+    'text_ids': val_text_ids,
+    'label_ids': np.array(val_label_ids, dtype=np.int32)
+}
+
+# Save the arrays and metadata
+with open(os.path.join(os.path.dirname(__file__), 'train_sentiment.pkl'), 'wb') as f:
+    pickle.dump(train_data, f)
+
+with open(os.path.join(os.path.dirname(__file__), 'val_sentiment.pkl'), 'wb') as f:
+    pickle.dump(val_data, f)
+
+# Save metadata for processing
+meta = {
+    'text_vocab_size': text_vocab_size,
+    'text_itos': itos,
+    'text_stoi': stoi,
+    'label_vocab_size': label_vocab_size,
+    'label_itos': label_itos,
+    'label_stoi': label_stoi,
+    'sentiment_labels': sentiment_labels
+}
+
+with open(os.path.join(os.path.dirname(__file__), 'sentiment_meta.pkl'), 'wb') as f:
     pickle.dump(meta, f)
 
-
+print("\nData preparation complete!")

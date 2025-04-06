@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/train.py", line 287, in <module>
+    X, Y = get_batch('train') # fetch the very first batch
+           ^^^^^^^^^^^^^^^^^^
+TypeError: get_batch() missing 4 required positional arguments: 'batch_size', 'block_size', 'device', and 'data_dir'

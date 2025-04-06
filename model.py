@@ -105,6 +105,8 @@ class Block(nn.Module):
         x = x + self.mlp(self.ln_2(x))
         return x
 
+
+### modified for sentiment prediction
 @dataclass
 class GPTConfig:
     block_size: int = 1024
@@ -114,12 +116,8 @@ class GPTConfig:
     n_embd: int = 768
     dropout: float = 0.0
     bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster
+    n_classes: int = 3  # New: Number of output classes
 
-@dataclass
-class SentimentGPTConfig:
-    num_classes: int = 3  # Default: negative (0), neutral (1), positive (2)
-    gpt_config: Optional[Any] = None  # Will hold the original GPT config
-    dropout: float = 0.1  # Dropout for the classification head
 
 class GPT(nn.Module):
 
@@ -130,18 +128,25 @@ class GPT(nn.Module):
         self.config = config
 
         self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(config.vocab_size, config.n_embd),
-            wpe = nn.Embedding(config.block_size, config.n_embd),
+            wte = nn.Embedding(config.vocab_size, config.n_embd), #token embedding
+            wpe = nn.Embedding(config.block_size, config.n_embd), #positional embedding
             drop = nn.Dropout(config.dropout),
-            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]), #multihead
             ln_f = LayerNorm(config.n_embd, bias=config.bias),
         ))
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+
+        #language model head, converts embedding back into vocab. we don't need
+
+        #self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+
+        self.classifier = nn.Linear(config.n_embd, config.n_classes, bias=False)
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
         # not 100% sure what this is, so far seems to be harmless. TODO investigate
-        self.transformer.wte.weight = self.lm_head.weight # https://paperswithcode.com/method/weight-tying
+        
+        # NEW: we do not need weight tying for classification??? so i am told
+        #self.transformer.wte.weight = self.classifier.weight # https://paperswithcode.com/method/weight-tying
 
         # init all weights
         self.apply(self._init_weights)
@@ -187,16 +192,45 @@ class GPT(nn.Module):
             x = block(x)
         x = self.transformer.ln_f(x)
 
-        if targets is not None:
-            # if we are given some desired targets also calculate the loss
-            logits = self.lm_head(x)
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
-        else:
-            # inference-time mini-optimization: only forward the lm_head on the very last position
-            logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
-            loss = None
+        # changing it for sentiment classsification
 
+        #if targets is not None:
+        #    # if we are given some desired targets also calculate the loss
+        #    logits = self.lm_head(x)
+        #    loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
+        #else:
+        #    # inference-time mini-optimization: only forward the lm_head on the very last position
+        #    logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
+        #    loss = None
+
+        
+        # Use last token's embedding for classification
+        x = x[:, -1]
+        #x = x[:, -1, :]  # (batch_size, n_embd)
+        
+        logits = self.classifier(x)
+        
+        if targets is not None:
+            loss = F.cross_entropy(logits, targets)
+        else:
+            loss = None
         return logits, loss
+
+
+    ### NEW
+    def predict_sentiment(self, idx):
+        """
+        Get sentiment prediction (probabilities and class) from input ids
+        """
+        with torch.no_grad():
+            result = self.forward(idx)
+            probs = F.softmax(result, dim=-1)
+            predictions = torch.argmax(probs, dim=-1)
+        
+        return {
+            "probabilities": probs,
+            "predictions": predictions
+        }
 
     def crop_block_size(self, block_size):
         # model surgery to decrease the block size if necessary
@@ -248,6 +282,7 @@ class GPT(nn.Module):
         sd_keys_hf = sd_hf.keys()
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore these, just a buffer
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
+      
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
         # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
         # this means that we have to transpose these weights when we import them

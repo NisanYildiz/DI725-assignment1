@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/train.py", line 303, in <module>
+    losses = estimate_loss()
+             ^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/train.py", line 261, in estimate_loss
+    X, Y = get_batch(split)
+           ^^^^^^^^^^^^^^^^
+TypeError: get_batch() missing 2 required positional arguments: 'batch_size' and 'block_size'

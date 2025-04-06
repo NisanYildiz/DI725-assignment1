@@ -1,0 +1,16 @@
+{"time":"2025-04-06T16:47:41.274117969Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/wandb/run-20250406_164741-piin75yi/logs/debug-core.log"}
+{"time":"2025-04-06T16:47:41.332216463Z","level":"INFO","msg":"created new stream","id":"piin75yi"}
+{"time":"2025-04-06T16:47:41.333062441Z","level":"INFO","msg":"stream: started","id":"piin75yi"}
+{"time":"2025-04-06T16:47:41.333066528Z","level":"INFO","msg":"handler: started","stream_id":"piin75yi"}
+{"time":"2025-04-06T16:47:41.333096945Z","level":"INFO","msg":"sender: started","stream_id":"piin75yi"}
+{"time":"2025-04-06T16:47:41.333109055Z","level":"INFO","msg":"writer: Do: started","stream_id":"piin75yi"}
+{"time":"2025-04-06T16:47:41.478939053Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-06T16:55:41.480951692Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:55:56.480639023Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:56:11.481195753Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:56:26.480519733Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:56:41.480420843Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:56:56.480426885Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:57:11.48086242Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:57:26.481246121Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}
+{"time":"2025-04-06T16:57:41.481078421Z","level":"ERROR","msg":"monitor: error sampling metrics: open /proc/52125/statm: no such file or directory\nopen /proc/52125/stat: no such file or directory\nopen /proc/52125/status: no such file or directory"}

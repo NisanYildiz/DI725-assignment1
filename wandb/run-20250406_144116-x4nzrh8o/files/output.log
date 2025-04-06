@@ -1,0 +1,42 @@
+step 0: train loss 1.1875, val loss 1.1855
+iter 0: loss 1.1605, time 77065.56ms, mfu -100.00%
+iter 50: loss 0.7876, time 509.15ms, mfu 0.73%
+iter 100: loss 0.8403, time 527.02ms, mfu 0.73%
+iter 150: loss 0.8139, time 526.66ms, mfu 0.73%
+iter 200: loss 0.6919, time 519.35ms, mfu 0.73%
+step 250: train loss 0.7574, val loss 0.7754
+saving checkpoint to out-sent-char
+iter 250: loss 0.8157, time 81844.16ms, mfu 0.65%
+iter 300: loss 0.7708, time 525.05ms, mfu 0.66%
+Traceback (most recent call last):
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/train.py", line 354, in <module>
+    logits, loss = model(X, Y)
+                   ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/model.py", line 192, in forward
+    x = block(x)
+        ^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/model.py", line 104, in forward
+    x = x + self.attn(self.ln_1(x))
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/dist-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/model.py", line 64, in forward
+    y = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=self.dropout if self.training else 0, is_causal=True)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt

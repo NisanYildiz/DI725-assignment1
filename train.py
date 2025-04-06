@@ -49,6 +49,7 @@ gradient_accumulation_steps = 5 * 8 # used to simulate larger batch sizes
 batch_size = 12 # if gradient_accumulation_steps > 1, this is the micro-batch size
 block_size = 1024
 # model
+n_classes = 3
 n_layer = 12
 n_head = 12
 n_embd = 768
@@ -72,7 +73,6 @@ backend = 'nccl' # 'nccl', 'gloo', etc.
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16' # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
 compile = True # use PyTorch 2.0 to compile the model to be faster
-token_type = ""
 # -----------------------------------------------------------------------------
 config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
 exec(open('configurator.py').read()) # overrides from command line or config file
@@ -114,39 +114,78 @@ ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=
 
 # poor man's data loader
 data_dir = os.path.join('data', dataset)
-def get_batch(split):
-    # We recreate np.memmap every batch to avoid a memory leak, as per
-    # https://stackoverflow.com/questions/45132940/numpy-memmap-memory-usage-want-to-iterate-once/61472122#61472122
-    if split == 'train':
-        data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
-    else:
-        data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
-    ix = torch.randint(len(data) - block_size, (batch_size,))
-    x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
-    y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
+
+#### edited get_batch function. 
+def get_batch(split, batch_size, block_size):
+
+    # Load the appropriate pickle file based on split
+    file_path = os.path.join(os.path.dirname(__file__), 
+        f'data/customer_service/{split}_sentiment.pkl')
+    
+    with open(file_path, 'rb') as f:
+        data = pickle.load(f)
+    
+    # Get text_ids and label_ids
+    text_ids = data['text_ids']
+    label_ids = data['label_ids']
+    
+    # Generate random indices for batch selection
+    ix = torch.randint(0, len(text_ids), (batch_size,))
+    
+    # Initialize lists for sequences and labels
+    x_list = []
+    y_list = []
+    
+    # Process each selected example
+    for i in ix:
+        # Get the text sequence for this example
+        text_seq = text_ids[i]
+        
+        # Handle sequences that are shorter than block_size
+        if len(text_seq) <= block_size:
+            # Pad shorter sequences with zeros
+            padded = text_seq + [0] * (block_size - len(text_seq))
+            x_list.append(torch.tensor(padded, dtype=torch.long))
+        else:
+            # For longer sequences, take a random slice of length block_size
+            start_idx = torch.randint(0, len(text_seq) - block_size + 1, (1,)).item()
+            x_list.append(torch.tensor(text_seq[start_idx:start_idx+block_size], dtype=torch.long))
+        
+        # Get the corresponding label
+        y_list.append(label_ids[i])
+    
+    # Stack inputs and labels
+    x = torch.stack(x_list)
+    y = torch.tensor(y_list, dtype=torch.long)
+    
     if device_type == 'cuda':
-        # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
+        # Pin arrays for asynchronous transfer to GPU
         x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
     else:
         x, y = x.to(device), y.to(device)
+    
     return x, y
+
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
 best_val_loss = 1e9
 
 # attempt to derive vocab_size from the dataset
-meta_path = os.path.join(data_dir, 'meta_char.pkl') if token_type == "char" else os.path.join(data_dir, 'meta.pkl')
+meta_path = os.path.join(os.path.dirname(__file__), 
+        f'data/customer_service/sentiment_meta.pkl')
 meta_vocab_size = None
 if os.path.exists(meta_path):
     with open(meta_path, 'rb') as f:
         meta = pickle.load(f)
-    meta_vocab_size = meta['vocab_size']
+    meta_vocab_size = meta['text_vocab_size']
     print(f"found vocab_size = {meta_vocab_size} (inside {meta_path})")
 
 # model init
+
+### NEW: added n_classes 
 model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size,
-                  bias=bias, vocab_size=None, dropout=dropout) # start with model_args from command line
+                  bias=bias, vocab_size=None, dropout=dropout, n_classes=n_classes) # start with model_args from command line
 if init_from == 'scratch':
     # init a new model from scratch
     print("Initializing a new model from scratch")
@@ -185,7 +224,7 @@ elif init_from.startswith('gpt2'):
     override_args = dict(dropout=dropout)
     model = GPT.from_pretrained(init_from, override_args)
     # read off the created config params, so we can store them into checkpoint correctly
-    for k in ['n_layer', 'n_head', 'n_embd', 'block_size', 'bias', 'vocab_size']:
+    for k in ['n_layer', 'n_head', 'n_embd', 'block_size', 'bias', 'vocab_size', "n_classes"]:
         model_args[k] = getattr(model.config, k)
 # crop down the model block size if desired, using model surgery
 if block_size < model.config.block_size:
@@ -220,7 +259,7 @@ def estimate_loss():
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            X, Y = get_batch(split)
+            X, Y = get_batch(split,batch_size, block_size)
             with ctx:
                 logits, loss = model(X, Y)
             losses[k] = loss.item()
@@ -248,7 +287,7 @@ if wandb_log and master_process:
     wandb.init(project=wandb_project, name=wandb_run_name, config=config)
 
 # training loop
-X, Y = get_batch('train') # fetch the very first batch
+X, Y = get_batch('train', batch_size, block_size) # fetch the very first batch
 t0 = time.time()
 local_iter_num = 0 # number of iterations in the lifetime of this process
 raw_model = model.module if ddp else model # unwrap DDP container if needed
@@ -285,6 +324,20 @@ while True:
                 }
                 print(f"saving checkpoint to {out_dir}")
                 torch.save(checkpoint, os.path.join(out_dir, 'ckpt.pt'))
+    ## save the final no matter what
+    if iter_num == max_iters:
+        print("Saving the final model")
+        checkpoint = {
+                    'model': raw_model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'model_args': model_args,
+                    'iter_num': iter_num,
+                    'best_val_loss': best_val_loss,
+                    'config': config,
+        }
+        print(f"saving checkpoint to {out_dir}")
+        torch.save(checkpoint, os.path.join(out_dir, 'final_ckpt.pt'))
+    
     if iter_num == 0 and eval_only:
         break
 
@@ -301,7 +354,7 @@ while True:
             logits, loss = model(X, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
-        X, Y = get_batch('train')
+        X, Y = get_batch('train', batch_size, block_size)
         # backward pass, with gradient scaling if training in fp16
         scaler.scale(loss).backward()
     # clip the gradient

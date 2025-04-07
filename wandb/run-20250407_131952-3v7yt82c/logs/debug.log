@@ -1,0 +1,22 @@
+2025-04-07 13:19:52,220 INFO    MainThread:4218 [wandb_setup.py:_flush():67] Current SDK version is 0.19.9
+2025-04-07 13:19:52,222 INFO    MainThread:4218 [wandb_setup.py:_flush():67] Configure stats pid to 4218
+2025-04-07 13:19:52,223 INFO    MainThread:4218 [wandb_setup.py:_flush():67] Loading settings from /root/.config/wandb/settings
+2025-04-07 13:19:52,224 INFO    MainThread:4218 [wandb_setup.py:_flush():67] Loading settings from /content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/wandb/settings
+2025-04-07 13:19:52,224 INFO    MainThread:4218 [wandb_setup.py:_flush():67] Loading settings from environment variables
+2025-04-07 13:19:52,224 INFO    MainThread:4218 [wandb_init.py:setup_run_log_directory():662] Logging user logs to /content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/wandb/run-20250407_131952-3v7yt82c/logs/debug.log
+2025-04-07 13:19:52,225 INFO    MainThread:4218 [wandb_init.py:setup_run_log_directory():663] Logging internal logs to /content/drive/MyDrive/DI725/DI725-assignment1/DI725-assignment1/wandb/run-20250407_131952-3v7yt82c/logs/debug-internal.log
+2025-04-07 13:19:52,225 INFO    MainThread:4218 [wandb_init.py:init():781] calling init triggers
+2025-04-07 13:19:52,225 INFO    MainThread:4218 [wandb_init.py:init():786] wandb.init called with sweep_config: {}
+config: {'out_dir': 'out-sent-gpt2', 'eval_interval': 5, 'log_interval': 1, 'eval_iters': 40, 'eval_only': False, 'always_save_checkpoint': False, 'init_from': 'gpt2', 'wandb_log': True, 'wandb_project': 'gpt2-finetune', 'wandb_run_name': 'ft-1744031984.4921925', 'dataset': 'customer_service_gpt2', 'gradient_accumulation_steps': 32, 'batch_size': 1, 'block_size': 1024, 'n_classes': 3, 'n_layer': 12, 'n_head': 12, 'n_embd': 768, 'dropout': 0.0, 'bias': False, 'learning_rate': 3e-05, 'max_iters': 20, 'weight_decay': 0.1, 'beta1': 0.9, 'beta2': 0.95, 'grad_clip': 1.0, 'decay_lr': False, 'warmup_iters': 2000, 'lr_decay_iters': 600000, 'min_lr': 6e-05, 'backend': 'nccl', 'device': 'cuda', 'dtype': 'bfloat16', 'compile': False, '_wandb': {}}
+2025-04-07 13:19:52,225 INFO    MainThread:4218 [wandb_init.py:init():809] starting backend
+2025-04-07 13:19:52,226 INFO    MainThread:4218 [wandb_init.py:init():813] sending inform_init request
+2025-04-07 13:19:52,243 INFO    MainThread:4218 [backend.py:_multiprocessing_setup():101] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2025-04-07 13:19:52,245 INFO    MainThread:4218 [wandb_init.py:init():823] backend started and connected
+2025-04-07 13:19:52,250 INFO    MainThread:4218 [wandb_init.py:init():915] updated telemetry
+2025-04-07 13:19:59,530 INFO    MainThread:4218 [wandb_init.py:init():939] communicating run to backend with 90.0 second timeout
+2025-04-07 13:19:59,925 INFO    MainThread:4218 [wandb_init.py:init():1014] starting run threads in backend
+2025-04-07 13:20:01,197 INFO    MainThread:4218 [wandb_run.py:_console_start():2454] atexit reg
+2025-04-07 13:20:01,198 INFO    MainThread:4218 [wandb_run.py:_redirect():2306] redirect: wrap_raw
+2025-04-07 13:20:01,199 INFO    MainThread:4218 [wandb_run.py:_redirect():2371] Wrapping output streams.
+2025-04-07 13:20:01,199 INFO    MainThread:4218 [wandb_run.py:_redirect():2394] Redirects installed.
+2025-04-07 13:20:01,222 INFO    MainThread:4218 [wandb_init.py:init():1056] run started, returning control to user process

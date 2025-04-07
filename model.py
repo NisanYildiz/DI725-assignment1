@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from transformers import GPT2ForSequenceClassification
 
 class LayerNorm(nn.Module):
     """ LayerNorm but with an optional bias. PyTorch doesn't support simply bias=False """
@@ -221,6 +222,8 @@ class GPT(nn.Module):
     def predict_sentiment(self, idx):
         """
         Get sentiment prediction (probabilities and class) from input ids
+
+        (there is an error? TODO: fix)
         """
         with torch.no_grad():
             result = self.forward(idx)
@@ -249,7 +252,7 @@ class GPT(nn.Module):
         override_args = override_args or {} # default to empty dict
         # only dropout can be overridden see more notes below
         assert all(k == 'dropout' for k in override_args)
-        from transformers import GPT2LMHeadModel
+        from transformers import GPT2ForSequenceClassification
         print("loading weights from pretrained gpt: %s" % model_type)
 
         # n_layer, n_head and n_embd are determined from model_type
@@ -263,10 +266,12 @@ class GPT(nn.Module):
         config_args['vocab_size'] = 50257 # always 50257 for GPT model checkpoints
         config_args['block_size'] = 1024 # always 1024 for GPT model checkpoints
         config_args['bias'] = True # always True for GPT model checkpoints
+        
         # we can override the dropout rate, if desired
         if 'dropout' in override_args:
             print(f"overriding dropout rate to {override_args['dropout']}")
             config_args['dropout'] = override_args['dropout']
+        
         # create a from-scratch initialized minGPT model
         config = GPTConfig(**config_args)
         model = GPT(config)
@@ -274,30 +279,60 @@ class GPT(nn.Module):
         sd_keys = sd.keys()
         sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')] # discard this mask / buffer, not a param
 
-        # init a huggingface/transformers model
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
+        # init a huggingface/transformers GPT2ForSequenceClassification model
+        from transformers import GPT2Config
+        hf_config = GPT2Config.from_pretrained(model_type)
+        hf_config.num_labels = config.n_classes  # Set number of output classes
+        model_hf = GPT2ForSequenceClassification.from_pretrained(model_type, config=hf_config)
         sd_hf = model_hf.state_dict()
 
         # copy while ensuring all of the parameters are aligned and match in names and shapes
         sd_keys_hf = sd_hf.keys()
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore these, just a buffer
         sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
-      
+        
+        # Filter out the classifier weights from huggingface model
+        sd_keys_hf = [k for k in sd_keys_hf if not k.startswith('score')]
+        
+        # Map keys between our model and HF model
+        key_mapping = {}
+        transformer_keys = [k for k in sd_keys if k.startswith('transformer.')]
+        
+        for k in transformer_keys:
+            # Map transformer keys
+            hf_key = k.replace('transformer.', 'transformer.')
+            if hf_key in sd_hf:
+                key_mapping[k] = hf_key
+        
+        # Handle classifier separately
+        if 'classifier.weight' in sd and hasattr(model_hf, 'score'):
+            key_mapping['classifier.weight'] = 'score.weight'
+        
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
         # basically the openai checkpoints use a "Conv1D" module, but we only want to use a vanilla Linear
         # this means that we have to transpose these weights when we import them
-        assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
-        for k in sd_keys_hf:
-            if any(k.endswith(w) for w in transposed):
-                # special treatment for the Conv1D weights we need to transpose
-                assert sd_hf[k].shape[::-1] == sd[k].shape
-                with torch.no_grad():
-                    sd[k].copy_(sd_hf[k].t())
-            else:
-                # vanilla copy over the other parameters
-                assert sd_hf[k].shape == sd[k].shape
-                with torch.no_grad():
-                    sd[k].copy_(sd_hf[k])
+        
+        # Copy parameters from HF model to our model
+        for k in sd_keys:
+            if k in key_mapping:
+                hf_k = key_mapping[k]
+                if any(k.endswith(w) for w in transposed):
+                    # special treatment for the Conv1D weights we need to transpose
+                    if sd_hf[hf_k].shape[::-1] == sd[k].shape:
+                        with torch.no_grad():
+                            sd[k].copy_(sd_hf[hf_k].t())
+                else:
+                    # Verify shapes match before copying
+                    if sd_hf[hf_k].shape == sd[k].shape:
+                        with torch.no_grad():
+                            sd[k].copy_(sd_hf[hf_k])
+                    else:
+                        print(f"Skipping parameter {k} due to shape mismatch: {sd[k].shape} vs {sd_hf[hf_k].shape}")
+
+        # For parameters that couldn't be copied, keep the random initialization
+        missing_keys = set(sd.keys()) - set(key_mapping.keys())
+        if missing_keys:
+            print(f"Warning: Some parameters were not copied from pretrained model: {missing_keys}")
 
         return model
 
